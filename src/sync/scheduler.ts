@@ -50,7 +50,10 @@ export function startScheduler() {
       setLastSyncTime(started);
       console.log(`Sync cycle complete.`);
     } catch (err) {
-      console.error("Sync cycle failed:", err instanceof Error ? err.message : err);
+      const ax = err as { response?: { status?: number; data?: unknown }; code?: string };
+      const msg = err instanceof Error ? (err.message || "(no message)") : String(err);
+      const extra = [ax.code, ax.response?.status ? `HTTP ${ax.response.status}` : "", JSON.stringify(ax.response?.data ?? "")].filter(Boolean).join(" | ");
+      console.error("Sync cycle failed:", msg, extra || "");
     } finally {
       running = false;
     }

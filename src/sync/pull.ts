@@ -4,7 +4,22 @@ import { syncToServer } from "../server/api";
 import { setModuleSyncTime } from "../storage/state";
 import { SYNC_MODULES } from "./modules";
 
-/** Upload parsed records to server — reuses syncToServer with the right module name */
+interface AxiosLike {
+  response?: { status?: number; data?: unknown };
+  code?: string;
+}
+
+function fmtError(err: unknown): string {
+  if (!(err instanceof Error)) return String(err);
+  const ax = err as AxiosLike;
+  const parts: string[] = [err.message || "(no message)"];
+  if (ax.code) parts.push(`code=${ax.code}`);
+  if (ax.response?.status) parts.push(`HTTP ${ax.response.status}`);
+  if (ax.response?.data) parts.push(`data=${JSON.stringify(ax.response.data)}`);
+  return parts.join(" | ");
+}
+
+/** Upload parsed records to server */
 async function uploadModule(serverModule: string, data: unknown[]): Promise<void> {
   await syncToServer(serverModule, "push", { data });
 }
@@ -27,10 +42,7 @@ export async function syncAll(from: string, to: string): Promise<void> {
       setModuleSyncTime(mod.serverModule, new Date());
       console.log(`  [${mod.serverModule}] ${records.length} records`);
     } catch (err) {
-      console.error(
-        `  [${mod.serverModule}] ERROR:`,
-        err instanceof Error ? err.message : err
-      );
+      console.error(`  [${mod.serverModule}] ERROR: ${fmtError(err)}`);
     }
   }
 }
