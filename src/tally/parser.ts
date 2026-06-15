@@ -23,6 +23,11 @@ function toArray<T>(val: T | T[] | undefined): T[] {
 }
 
 function str(val: unknown): string {
+  // fast-xml-parser wraps elements with attributes as { "@_TYPE": "...", "#text": "value" }
+  if (val !== null && typeof val === "object") {
+    const t = (val as Record<string, unknown>)["#text"];
+    if (t !== undefined) return String(t ?? "").trim();
+  }
   return String(val ?? "").trim();
 }
 
@@ -36,11 +41,20 @@ function name(obj: TallyObj): string {
   return str(obj["@_NAME"] ?? obj["NAME"]);
 }
 
-/** Navigate into the standard Tally export envelope and return the COLLECTION or TALLYMESSAGE child */
+/** Navigate into the Tally export envelope and return the COLLECTION object.
+ *  Handles both Tally Prime (BODY>DATA>COLLECTION) and ERP 9 (BODY>EXPORTDATA>REQUESTDATA>TALLYMESSAGE). */
 function getCollection(xml: string): TallyObj | null {
   const parsed = parser.parse(xml) as TallyObj;
   const envelope = parsed["ENVELOPE"] as TallyObj | undefined;
   const body = envelope?.["BODY"] as TallyObj | undefined;
+
+  // Tally Prime path: BODY > DATA > COLLECTION
+  const data = body?.["DATA"] as TallyObj | undefined;
+  if (data?.["COLLECTION"]) {
+    return data["COLLECTION"] as TallyObj;
+  }
+
+  // Tally ERP 9 path: BODY > EXPORTDATA > REQUESTDATA > TALLYMESSAGE
   const exportData = body?.["EXPORTDATA"] as TallyObj | undefined;
   const requestData = exportData?.["REQUESTDATA"] as TallyObj | undefined;
   const tallyMsg = requestData?.["TALLYMESSAGE"] as TallyObj | undefined;
@@ -337,7 +351,7 @@ export interface TallyVoucher {
   inventory_entries: TallyInventoryEntry[];
 }
 
-export function parseVouchers(xml: string): TallyVoucher[] {
+export function parseVouchers(xml: string, fromDate?: string, toDate?: string): TallyVoucher[] {
   const col = getCollection(xml);
   if (!col) return [];
   const vouchers = toArray(col["VOUCHER"] as TallyObj | TallyObj[]);
@@ -385,7 +399,12 @@ export function parseVouchers(xml: string): TallyVoucher[] {
         inventory_entries: inventoryEntries,
       };
     })
-    .filter((v) => v.voucher_type.length > 0);
+    .filter((v) => {
+      if (!v.voucher_type) return false;
+      if (fromDate && v.date < fromDate) return false;
+      if (toDate   && v.date > toDate)   return false;
+      return true;
+    });
 }
 
 // ─── Batch / Serial numbers ───────────────────────────────────────────────────

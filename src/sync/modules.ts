@@ -28,11 +28,6 @@ import {
   getSalesOrdersXML,
   getPurchaseOrdersXML,
   getDayBookXML,
-  getTrialBalanceXML,
-  getProfitLossXML,
-  getBalanceSheetXML,
-  getHSNSummaryXML,
-  getGSTSummaryXML,
   getBatchDetailsXML,
 } from "../tally/requests";
 
@@ -49,7 +44,6 @@ import {
   parseVoucherTypes,
   parseVouchers,
   parseBatchDetails,
-  parseReport,
 } from "../tally/parser";
 
 export interface SyncModule {
@@ -62,7 +56,7 @@ export interface SyncModule {
   incremental: boolean;
   getXML: (from?: string, to?: string) => string;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  parse: (xml: string) => any[];
+  parse: (xml: string, from?: string, to?: string) => any[];
 }
 
 export const SYNC_MODULES: SyncModule[] = [
@@ -252,35 +246,7 @@ export const SYNC_MODULES: SyncModule[] = [
     parse: parseVouchers,
   },
 
-  // ── Reports ────────────────────────────────────────────────────────────────
-  {
-    serverModule: "trial_balance",
-    incremental: true,
-    getXML: (from, to) => getTrialBalanceXML(from!, to!),
-    parse: (xml) => [parseReport(xml)],
-  },
-  {
-    serverModule: "profit_loss",
-    incremental: true,
-    getXML: (from, to) => getProfitLossXML(from!, to!),
-    parse: (xml) => [parseReport(xml)],
-  },
-  {
-    serverModule: "balance_sheet",
-    incremental: true,
-    getXML: (from, to) => getBalanceSheetXML(from!, to!),
-    parse: (xml) => [parseReport(xml)],
-  },
-  {
-    serverModule: "hsn_summary",
-    incremental: true,
-    getXML: (from, to) => getHSNSummaryXML(from!, to!),
-    parse: (xml) => [parseReport(xml)],
-  },
-  {
-    serverModule: "gst_summary",
-    incremental: true,
-    getXML: (from, to) => getGSTSummaryXML(from!, to!),
-    parse: (xml) => [parseReport(xml)],
-  },
 ];
+// Note: trial_balance, profit_loss, balance_sheet, hsn_summary, gst_summary are removed.
+// Tally Prime does not support these as Collection exports — they cause TDL errors.
+// These reports should be generated server-side from voucher and ledger data.

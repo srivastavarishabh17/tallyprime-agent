@@ -41,9 +41,9 @@ function masterXML(collectionId: string): string {
 
 /** Vouchers filtered by type and date range via TDL */
 function vouchersXML(voucherType: string | null, from: string, to: string): string {
-  const filterFormula = voucherType
-    ? `($$InRange:$Date:$$ToDate:${from}:$$ToDate:${to}) AND ($VoucherTypeName = "${voucherType}")`
-    : `$$InRange:$Date:$$ToDate:${from}:$$ToDate:${to}`;
+  // $$InRange does not work in Tally Prime TDL — fetch all vouchers and filter in JS
+  const typeFilter = voucherType ? `$VoucherTypeName = "${voucherType}"` : "Yes";
+  void from; void to; // date filtering handled in parser
 
   return `
 <ENVELOPE>
@@ -57,8 +57,6 @@ function vouchersXML(voucherType: string | null, from: string, to: string): stri
   <DESC>
    <STATICVARIABLES>
     <SVEXPORTFORMAT>$$SysName:XML</SVEXPORTFORMAT>
-    <SVFROMDATE>${from}</SVFROMDATE>
-    <SVTODATE>${to}</SVTODATE>
    </STATICVARIABLES>
    <TDL>
     <TDLMESSAGE>
@@ -66,7 +64,7 @@ function vouchersXML(voucherType: string | null, from: string, to: string): stri
       <TYPE>Voucher</TYPE>
       <FILTERS>VchFilter</FILTERS>
      </COLLECTION>
-     <SYSTEM TYPE="Formulae" NAME="VchFilter">${filterFormula}</SYSTEM>
+     <SYSTEM TYPE="Formulae" NAME="VchFilter">${typeFilter}</SYSTEM>
     </TDLMESSAGE>
    </TDL>
   </DESC>
@@ -75,14 +73,14 @@ function vouchersXML(voucherType: string | null, from: string, to: string): stri
 }
 
 /** Ledgers filtered by parent group */
-function ledgersByGroupXML(parentGroup: string): string {
+function ledgersByGroupXML(parentGroup: string, collectionId: string): string {
   return `
 <ENVELOPE>
  <HEADER>
   <VERSION>1</VERSION>
   <TALLYREQUEST>Export</TALLYREQUEST>
   <TYPE>Collection</TYPE>
-  <ID>FilteredLedgers</ID>
+  <ID>${collectionId}</ID>
  </HEADER>
  <BODY>
   <DESC>
@@ -91,11 +89,37 @@ function ledgersByGroupXML(parentGroup: string): string {
    </STATICVARIABLES>
    <TDL>
     <TDLMESSAGE>
-     <COLLECTION NAME="FilteredLedgers" ISMODIFY="Yes">
+     <COLLECTION NAME="${collectionId}" ISMODIFY="No">
       <TYPE>Ledger</TYPE>
-      <FILTERS>GroupFilter</FILTERS>
+      <BELONGSTO>${parentGroup}</BELONGSTO>
      </COLLECTION>
-     <SYSTEM TYPE="Formulae" NAME="GroupFilter">$$InList:$Parent:"${parentGroup}"</SYSTEM>
+    </TDLMESSAGE>
+   </TDL>
+  </DESC>
+ </BODY>
+</ENVELOPE>`;
+}
+
+/** Custom TDL collection by object type — works in both ERP 9 and Tally Prime */
+function tdlCollectionXML(collectionId: string, objectType: string): string {
+  return `
+<ENVELOPE>
+ <HEADER>
+  <VERSION>1</VERSION>
+  <TALLYREQUEST>Export</TALLYREQUEST>
+  <TYPE>Collection</TYPE>
+  <ID>${collectionId}</ID>
+ </HEADER>
+ <BODY>
+  <DESC>
+   <STATICVARIABLES>
+    <SVEXPORTFORMAT>$$SysName:XML</SVEXPORTFORMAT>
+   </STATICVARIABLES>
+   <TDL>
+    <TDLMESSAGE>
+     <COLLECTION NAME="${collectionId}" ISMODIFY="No">
+      <TYPE>${objectType}</TYPE>
+     </COLLECTION>
     </TDLMESSAGE>
    </TDL>
   </DESC>
@@ -148,35 +172,35 @@ export function getStockItemsXML(): string {
 }
 
 export function getUnitsXML(): string {
-  return masterXML("List of Units");
+  return tdlCollectionXML("AllUnits", "Unit");
 }
 
 export function getGodownsXML(): string {
-  return masterXML("List of Godowns");
+  return tdlCollectionXML("AllGodowns", "Godown");
 }
 
 export function getCostCentresXML(): string {
-  return masterXML("List of Cost Centres");
+  return tdlCollectionXML("AllCostCentres", "CostCentre");
 }
 
 export function getCostCategoriesXML(): string {
-  return masterXML("List of Cost Categories");
+  return tdlCollectionXML("AllCostCategories", "CostCategory");
 }
 
 export function getVoucherTypesXML(): string {
-  return masterXML("List of Voucher Types");
+  return tdlCollectionXML("AllVoucherTypes", "VoucherType");
 }
 
 export function getCustomerMastersXML(): string {
-  return ledgersByGroupXML("Sundry Debtors");
+  return ledgersByGroupXML("Sundry Debtors", "CustomerLedgers");
 }
 
 export function getSupplierMastersXML(): string {
-  return ledgersByGroupXML("Sundry Creditors");
+  return ledgersByGroupXML("Sundry Creditors", "SupplierLedgers");
 }
 
 export function getBankMastersXML(): string {
-  return ledgersByGroupXML("Bank Accounts");
+  return ledgersByGroupXML("Bank Accounts", "BankLedgers");
 }
 
 /** Stock items with closing balance — needs date context */
@@ -206,9 +230,8 @@ export function getCustomerOutstandingXML(from: string, to: string): string {
     <TDLMESSAGE>
      <COLLECTION NAME="OutstandingReceivables" ISMODIFY="No">
       <TYPE>Ledger</TYPE>
-      <FILTERS>DebtorFilter</FILTERS>
+      <BELONGSTO>Sundry Debtors</BELONGSTO>
      </COLLECTION>
-     <SYSTEM TYPE="Formulae" NAME="DebtorFilter">$$InList:$Parent:"Sundry Debtors"</SYSTEM>
     </TDLMESSAGE>
    </TDL>
   </DESC>
@@ -236,9 +259,8 @@ export function getSupplierOutstandingXML(from: string, to: string): string {
     <TDLMESSAGE>
      <COLLECTION NAME="OutstandingPayables" ISMODIFY="No">
       <TYPE>Ledger</TYPE>
-      <FILTERS>CreditorFilter</FILTERS>
+      <BELONGSTO>Sundry Creditors</BELONGSTO>
      </COLLECTION>
-     <SYSTEM TYPE="Formulae" NAME="CreditorFilter">$$InList:$Parent:"Sundry Creditors"</SYSTEM>
     </TDLMESSAGE>
    </TDL>
   </DESC>

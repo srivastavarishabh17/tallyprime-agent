@@ -2,6 +2,7 @@ import { sendToTally } from "../tally/client";
 import { uploadLedgers } from "../server/api";
 import { syncToServer } from "../server/api";
 import { setModuleSyncTime } from "../storage/state";
+import { loadConfig } from "../config";
 import { SYNC_MODULES } from "./modules";
 
 interface AxiosLike {
@@ -19,19 +20,29 @@ function fmtError(err: unknown): string {
   return parts.join(" | ");
 }
 
-/** Upload parsed records to server */
+const CHUNK_SIZE = 500;
+
+/** Upload records to server in chunks of CHUNK_SIZE */
 async function uploadModule(serverModule: string, data: unknown[]): Promise<void> {
-  await syncToServer(serverModule, "push", { data });
+  for (let i = 0; i < data.length; i += CHUNK_SIZE) {
+    const chunk = data.slice(i, i + CHUNK_SIZE);
+    await syncToServer(serverModule, "push", { data: chunk, offset: i, total: data.length });
+  }
 }
 
 export async function syncAll(from: string, to: string): Promise<void> {
-  console.log(`Sync range: ${from} → ${to} (${SYNC_MODULES.length} modules)`);
+  const config = loadConfig();
+  const enabledSet = config.enabledModules ? new Set(config.enabledModules) : null;
+  const modules = enabledSet ? SYNC_MODULES.filter(m => enabledSet.has(m.serverModule)) : SYNC_MODULES;
 
-  for (const mod of SYNC_MODULES) {
+  console.log(`Sync range: ${from} → ${to} (${modules.length} modules)`);
+
+  for (const mod of modules) {
     try {
       const xml = mod.incremental ? mod.getXML(from, to) : mod.getXML();
       const response = await sendToTally(xml);
-      const records = mod.parse(response);
+
+      const records = mod.parse(response, mod.incremental ? from : undefined, mod.incremental ? to : undefined);
 
       if (records.length === 0) {
         console.log(`  [${mod.serverModule}] 0 records — skipped`);

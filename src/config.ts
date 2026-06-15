@@ -13,6 +13,8 @@ export interface AgentConfig {
     company_id: number;
   };
   syncInterval: string;
+  /** If set, only these modules will be synced. If omitted, all modules run. */
+  enabledModules?: string[];
 }
 
 export function loadConfig(): AgentConfig {
@@ -44,5 +46,6 @@ export function loadConfig(): AgentConfig {
       company_id: server["company_id"] as number,
     },
     syncInterval: raw["syncInterval"] as string,
+    ...(raw["enabledModules"] ? { enabledModules: raw["enabledModules"] as string[] } : {}),
   };
 }

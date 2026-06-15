@@ -1,6 +1,7 @@
 {
   "tally": {
-    "host": "http://localhost:9000"
+    "host": "http://localhost:9000",
+    "timeoutMs": 30000
   },
   "server": {
     "api": "https://inventory.satyakiran.co.in/api/tally/integration",
