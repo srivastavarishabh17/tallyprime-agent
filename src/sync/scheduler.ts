@@ -5,6 +5,16 @@ import { syncAll } from "./pull";
 import { pushInvoices } from "./push";
 import { getLastSyncTime, setLastSyncTime } from "../storage/state";
 
+function fmtErr(err: unknown): string {
+  if (!(err instanceof Error)) return String(err);
+  const ax = err as { response?: { status?: number; data?: unknown }; code?: string };
+  const parts = [err.message || "(no message)"];
+  if (ax.code) parts.push(`code=${ax.code}`);
+  if (ax.response?.status) parts.push(`HTTP ${ax.response.status}`);
+  if (ax.response?.data) parts.push(`data=${JSON.stringify(ax.response.data)}`);
+  return parts.join(" | ");
+}
+
 /** Returns the start of the Indian financial year (April 1) for the given date */
 function financialYearStart(now: Date): Date {
   const year = now.getMonth() >= 3 ? now.getFullYear() : now.getFullYear() - 1;
@@ -46,14 +56,17 @@ export function startScheduler() {
     try {
       const { from, to } = syncDateRange();
       await syncAll(from, to);
-      await pushInvoices();
+
+      try {
+        await pushInvoices();
+      } catch (pushErr) {
+        console.error("Push to Tally failed:", fmtErr(pushErr));
+      }
+
       setLastSyncTime(started);
       console.log(`Sync cycle complete.`);
     } catch (err) {
-      const ax = err as { response?: { status?: number; data?: unknown }; code?: string };
-      const msg = err instanceof Error ? (err.message || "(no message)") : String(err);
-      const extra = [ax.code, ax.response?.status ? `HTTP ${ax.response.status}` : "", JSON.stringify(ax.response?.data ?? "")].filter(Boolean).join(" | ");
-      console.error("Sync cycle failed:", msg, extra || "");
+      console.error("Sync cycle failed:", fmtErr(err));
     } finally {
       running = false;
     }
