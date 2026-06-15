@@ -1,0 +1,12 @@
+{
+  "tally": {
+    "host": "http://localhost:9000"
+  },
+  "server": {
+    "api": "https://inventory.satyakiran.co.in/api/tally/integration",
+    "token": "satyakiran-agent-token-4325125",
+    "device_id": "PC001",
+    "company_id": 1
+  },
+  "syncInterval": "*/2 * * * *"
+}
