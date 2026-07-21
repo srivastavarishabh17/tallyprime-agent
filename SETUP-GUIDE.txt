@@ -1,0 +1,115 @@
+=====================================================================
+                SATYAKIRAN AGENT - SETUP GUIDE
+        TallyPrime <-> Satyakiran Inventory Sync Agent
+=====================================================================
+
+WHAT IS THIS?
+-------------
+Satyakiran Agent is a small desktop app that runs on the same PC as
+TallyPrime. Every 2 minutes it automatically:
+  - Sends your Tally data (ledgers, stock, vouchers, etc.) to the
+    Satyakiran Inventory server.
+  - Brings pending entries from the server into Tally.
+
+It keeps running quietly in the system tray (near the clock). You do
+not need to open it every day.
+
+
+REQUIREMENTS (BEFORE INSTALLING)
+--------------------------------
+1. Windows 10 or 11 (64-bit).
+2. TallyPrime installed and running on this PC.
+3. Tally's XML server must be ON:
+     - Open TallyPrime
+     - Press F1 (Help) > Settings > Connectivity
+     - Client/Server configuration:
+         "TallyPrime acts as" = Both
+         Port = 9000
+     - Restart TallyPrime after changing this.
+4. Internet connection.
+
+
+INSTALLATION
+------------
+1. Double-click "Satyakiran Agent Setup 0.2.0.exe".
+2. If Windows shows a blue "Windows protected your PC" screen,
+   click "More info" and then "Run anyway".
+   (This appears because the app is new, it is safe.)
+3. The app installs and opens automatically.
+
+
+FIRST-TIME SETUP
+----------------
+1. When the app opens, click the "Settings" tab at the top.
+2. Fill these fields (values are provided by your administrator):
+
+     Tally XML host     : http://localhost:9000   (usually keep as-is)
+     API endpoint       : (already filled, keep as-is)
+     Agent token        : PASTE THE TOKEN GIVEN TO YOU
+     Device ID          : Unique name for this PC, e.g. PC001, SHOP2
+     Company ID         : Number given by administrator, e.g. 1
+     Sync interval      : */2 * * * *   (every 2 minutes, keep as-is)
+
+3. Email alert fields: only the administrator/developer needs to set
+   these. If you were not given email details, leave them as-is.
+
+4. Click "Save & Restart Agent".
+
+5. Go back to the "Dashboard" tab. Within a minute you should see
+   log lines appearing and the status chip should say "running".
+
+
+DAILY USE
+---------
+- Nothing! The agent syncs automatically every 2 minutes.
+- Closing the window does NOT stop the agent - it keeps running in
+  the system tray (bottom-right corner, near the clock).
+- To open the dashboard again: double-click the tray icon, or
+  right-click it and choose "Open Dashboard".
+- To force an immediate sync: click "Sync Now" on the dashboard.
+- To fully stop the agent: right-click the tray icon > Quit.
+
+
+AUTOMATIC UPDATES
+-----------------
+The app updates itself. When a new version is available it downloads
+in the background and a chip appears at the top:
+   "Update vX.X.X ready - click to install"
+Click it, the app restarts with the new version. If you never click,
+it will still install the next time the app is restarted.
+
+
+IF SOMETHING GOES WRONG
+-----------------------
+The dashboard shows all activity live. Common issues:
+
+1. Red errors saying "ECONNREFUSED" or "Tally":
+     -> TallyPrime is not running, or its XML server is off.
+        Start Tally and check the Connectivity settings (see
+        REQUIREMENTS above).
+
+2. Errors saying "401" or "Unauthorized":
+     -> The Agent token in Settings is wrong. Re-paste the token
+        given by your administrator and click Save.
+
+3. Errors saying "404" or server errors:
+     -> Contact the administrator; the server may be under
+        maintenance.
+
+4. Status says "stopped":
+     -> Open Settings, check all fields are filled, click
+        "Save & Restart Agent".
+
+All errors are also sent automatically to the developer, so serious
+problems are usually noticed without you doing anything. For help,
+contact: dev.blazync@gmail.com
+
+
+WHERE ARE MY FILES?
+-------------------
+The agent stores its settings and logs here:
+   C:\Users\<YourName>\AppData\Roaming\Satyakiran Agent\
+     agent.config.json  - settings
+     logs\agent.log     - local log file
+
+=====================================================================

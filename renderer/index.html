@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Satyakiran Agent</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+      background: #0f1420; color: #dde3ee; height: 100vh;
+      display: flex; flex-direction: column; overflow: hidden;
+    }
+    header {
+      display: flex; align-items: center; gap: 12px;
+      padding: 14px 20px; background: #161d2e; border-bottom: 1px solid #232d45;
+    }
+    header h1 { font-size: 16px; font-weight: 600; }
+    .chip {
+      font-size: 11px; padding: 3px 10px; border-radius: 99px;
+      background: #232d45; color: #8fa3c8;
+    }
+    .chip.ok { background: #123524; color: #4ade80; }
+    .chip.err { background: #3a1520; color: #f87171; }
+    .chip.update { background: #1e2a4a; color: #93b4f8; cursor: pointer; }
+    header .spacer { flex: 1; }
+    button {
+      background: #2c62e0; color: #fff; border: none; border-radius: 6px;
+      padding: 8px 16px; font-size: 13px; cursor: pointer;
+    }
+    button:hover { background: #3b71ef; }
+    button.secondary { background: #232d45; color: #aebad2; }
+    button.secondary:hover { background: #2c3854; }
+    button:disabled { opacity: .5; cursor: default; }
+    .tabs { display: flex; gap: 4px; padding: 10px 20px 0; background: #131a2a; }
+    .tab {
+      padding: 8px 18px; font-size: 13px; color: #8fa3c8; cursor: pointer;
+      border-radius: 8px 8px 0 0; background: transparent;
+    }
+    .tab.active { background: #0f1420; color: #dde3ee; }
+    main { flex: 1; overflow: hidden; display: flex; flex-direction: column; }
+    .page { flex: 1; overflow: auto; padding: 18px 20px; display: none; }
+    .page.active { display: flex; flex-direction: column; gap: 16px; }
+    .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; }
+    .card {
+      background: #161d2e; border: 1px solid #232d45; border-radius: 10px; padding: 14px;
+    }
+    .card .label { font-size: 11px; color: #8fa3c8; text-transform: uppercase; letter-spacing: .5px; }
+    .card .value { font-size: 15px; margin-top: 6px; word-break: break-all; }
+    .card .value.ok { color: #4ade80; }
+    .card .value.err { color: #f87171; }
+    #lastErrorCard { grid-column: 1 / -1; display: none; }
+    .log-toolbar { display: flex; gap: 8px; align-items: center; }
+    .log-toolbar select {
+      background: #161d2e; color: #dde3ee; border: 1px solid #232d45;
+      border-radius: 6px; padding: 6px 10px; font-size: 13px;
+    }
+    #logbox {
+      flex: 1; overflow-y: auto; background: #0a0e18; border: 1px solid #232d45;
+      border-radius: 10px; padding: 12px; font-family: "SF Mono", Consolas, monospace;
+      font-size: 12px; line-height: 1.7; white-space: pre-wrap; word-break: break-word;
+    }
+    .ll { display: block; }
+    .ll .t { color: #5b6b8c; }
+    .ll.warn { color: #fbbf24; }
+    .ll.error { color: #f87171; }
+    form { display: flex; flex-direction: column; gap: 18px; max-width: 620px; }
+    fieldset { border: 1px solid #232d45; border-radius: 10px; padding: 16px; }
+    legend { padding: 0 8px; font-size: 13px; color: #8fa3c8; }
+    .row { display: flex; gap: 12px; margin-bottom: 10px; }
+    .field { flex: 1; display: flex; flex-direction: column; gap: 4px; }
+    .field label { font-size: 12px; color: #8fa3c8; }
+    .field input, .field select {
+      background: #0a0e18; border: 1px solid #232d45; color: #dde3ee;
+      border-radius: 6px; padding: 8px 10px; font-size: 13px;
+    }
+    .hint { font-size: 11px; color: #5b6b8c; }
+    #saveMsg { font-size: 13px; color: #4ade80; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Satyakiran Agent</h1>
+    <span class="chip" id="versionChip">v–</span>
+    <span class="chip" id="agentChip">…</span>
+    <span class="chip update" id="updateChip" style="display:none"></span>
+    <span class="spacer"></span>
+    <button id="syncBtn">Sync Now</button>
+    <button id="restartBtn" class="secondary">Restart Agent</button>
+  </header>
+
+  <div class="tabs">
+    <div class="tab active" data-page="dashboard">Dashboard</div>
+    <div class="tab" data-page="settings">Settings</div>
+  </div>
+
+  <main>
+    <div class="page active" id="page-dashboard">
+      <div class="cards">
+        <div class="card"><div class="label">Status</div><div class="value" id="stStatus">–</div></div>
+        <div class="card"><div class="label">Last successful sync</div><div class="value" id="stLastSync">–</div></div>
+        <div class="card"><div class="label">Cycles completed</div><div class="value" id="stCycles">–</div></div>
+        <div class="card"><div class="label">Device</div><div class="value" id="stDevice">–</div></div>
+        <div class="card" id="lastErrorCard"><div class="label">Last error</div><div class="value err" id="stLastError"></div></div>
+      </div>
+      <div class="log-toolbar">
+        <select id="levelFilter">
+          <option value="all">All levels</option>
+          <option value="info">Info</option>
+          <option value="warn">Warnings</option>
+          <option value="error">Errors</option>
+        </select>
+        <span class="hint">Live logs — also written to the local log file and shipped to the server.</span>
+      </div>
+      <div id="logbox"></div>
+    </div>
+
+    <div class="page" id="page-settings">
+      <form id="cfgForm">
+        <fieldset>
+          <legend>Tally</legend>
+          <div class="row">
+            <div class="field"><label>Tally XML host</label><input id="c_tallyHost" placeholder="http://localhost:9000"></div>
+            <div class="field"><label>Timeout (ms)</label><input id="c_tallyTimeout" type="number" placeholder="30000"></div>
+          </div>
+        </fieldset>
+        <fieldset>
+          <legend>Server</legend>
+          <div class="row">
+            <div class="field"><label>API endpoint</label><input id="c_api"></div>
+          </div>
+          <div class="row">
+            <div class="field"><label>Agent token</label><input id="c_token" type="password"></div>
+          </div>
+          <div class="row">
+            <div class="field"><label>Device ID</label><input id="c_device"></div>
+            <div class="field"><label>Company ID</label><input id="c_company" type="number"></div>
+            <div class="field"><label>Sync interval (cron)</label><input id="c_interval" placeholder="*/2 * * * *"></div>
+          </div>
+        </fieldset>
+        <fieldset>
+          <legend>Error email alerts</legend>
+          <div class="row">
+            <div class="field"><label>Enabled</label>
+              <select id="c_mailEnabled"><option value="true">Yes</option><option value="false">No</option></select>
+            </div>
+            <div class="field"><label>SMTP host</label><input id="c_smtpHost" placeholder="smtp.gmail.com"></div>
+            <div class="field"><label>SMTP port</label><input id="c_smtpPort" type="number" placeholder="465"></div>
+          </div>
+          <div class="row">
+            <div class="field"><label>Gmail address (from)</label><input id="c_mailUser" placeholder="youraccount@gmail.com"></div>
+            <div class="field"><label>App password</label><input id="c_mailPass" type="password"></div>
+          </div>
+          <div class="row">
+            <div class="field"><label>Send alerts to</label><input id="c_mailTo" placeholder="dev.blazync@gmail.com"></div>
+            <div class="field"><label>Throttle (minutes)</label><input id="c_mailThrottle" type="number" placeholder="15"></div>
+          </div>
+          <span class="hint">Use a Gmail App Password (Google Account → Security → 2-Step Verification → App passwords), not the normal account password.</span>
+        </fieldset>
+        <div class="row" style="align-items:center">
+          <button type="submit">Save &amp; Restart Agent</button>
+          <span id="saveMsg"></span>
+        </div>
+      </form>
+    </div>
+  </main>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const logbox = $("logbox");
+    let allLogs = [];
+
+    // --- tabs ---
+    document.querySelectorAll(".tab").forEach((tab) => {
+      tab.addEventListener("click", () => {
+        document.querySelectorAll(".tab").forEach((t) => t.classList.remove("active"));
+        document.querySelectorAll(".page").forEach((p) => p.classList.remove("active"));
+        tab.classList.add("active");
+        $("page-" + tab.dataset.page).classList.add("active");
+      });
+    });
+
+    // --- logs ---
+    function renderLog(entry) {
+      const filter = $("levelFilter").value;
+      if (filter !== "all" && entry.level !== filter) return;
+      const div = document.createElement("div");
+      div.className = "ll " + entry.level;
+      const time = entry.timestamp.slice(11, 19);
+      div.innerHTML = '<span class="t">' + time + "</span> " + escapeHtml(entry.message);
+      logbox.appendChild(div);
+      while (logbox.childNodes.length > 500) logbox.removeChild(logbox.firstChild);
+      logbox.scrollTop = logbox.scrollHeight;
+    }
+    function rerenderLogs() {
+      logbox.innerHTML = "";
+      allLogs.forEach(renderLog);
+    }
+    function escapeHtml(s) {
+      return s.replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
+    }
+    $("levelFilter").addEventListener("change", rerenderLogs);
+
+    window.agent.onLog((entry) => {
+      allLogs.push(entry);
+      if (allLogs.length > 500) allLogs.shift();
+      renderLog(entry);
+    });
+
+    // --- status ---
+    async function refreshStatus() {
+      try {
+        const st = await window.agent.getStatus();
+        $("versionChip").textContent = "v" + st.version;
+        $("agentChip").textContent = st.schedulerActive ? (st.running ? "syncing…" : "running") : "stopped";
+        $("agentChip").className = "chip " + (st.schedulerActive ? "ok" : "err");
+        $("stStatus").textContent = st.schedulerActive ? (st.running ? "Sync in progress" : "Idle — waiting for next cycle") : "Stopped (check config)";
+        $("stStatus").className = "value " + (st.schedulerActive ? "ok" : "err");
+        $("stLastSync").textContent = st.lastSuccess ? new Date(st.lastSuccess).toLocaleString() : "never";
+        $("stCycles").textContent = st.cyclesCompleted;
+        if (st.lastError) {
+          $("lastErrorCard").style.display = "block";
+          $("stLastError").textContent = "[" + (st.lastErrorAt ? new Date(st.lastErrorAt).toLocaleString() : "") + "] " + st.lastError;
+        }
+      } catch (e) { /* main not ready yet */ }
+    }
+    setInterval(refreshStatus, 3000);
+
+    // --- actions ---
+    $("syncBtn").addEventListener("click", async () => {
+      $("syncBtn").disabled = true;
+      try { await window.agent.runSync(); } catch (e) { alert(e.message || e); }
+      $("syncBtn").disabled = false;
+      refreshStatus();
+    });
+    $("restartBtn").addEventListener("click", async () => {
+      await window.agent.restartAgent();
+      refreshStatus();
+    });
+
+    // --- updates ---
+    window.agent.onUpdateEvent((ev) => {
+      const chip = $("updateChip");
+      if (ev.state === "available") {
+        chip.style.display = "inline-block";
+        chip.textContent = "Update v" + ev.version + " downloading…";
+        chip.onclick = null;
+      } else if (ev.state === "downloaded") {
+        chip.style.display = "inline-block";
+        chip.textContent = "Update v" + ev.version + " ready — click to install";
+        chip.onclick = () => window.agent.installUpdate();
+      }
+    });
+
+    // --- settings ---
+    async function loadSettings() {
+      const cfg = await window.agent.getConfig();
+      if (!cfg) return;
+      $("c_tallyHost").value = cfg.tally.host;
+      $("c_tallyTimeout").value = cfg.tally.timeoutMs;
+      $("c_api").value = cfg.server.api;
+      $("c_token").value = cfg.server.token;
+      $("c_device").value = cfg.server.device_id;
+      $("c_company").value = cfg.server.company_id;
+      $("c_interval").value = cfg.syncInterval;
+      const em = (cfg.alerts && cfg.alerts.email) || {};
+      $("c_mailEnabled").value = String(!!em.enabled);
+      $("c_smtpHost").value = em.smtpHost || "smtp.gmail.com";
+      $("c_smtpPort").value = em.smtpPort || 465;
+      $("c_mailUser").value = em.user || "";
+      $("c_mailPass").value = em.appPassword || "";
+      $("c_mailTo").value = em.to || "";
+      $("c_mailThrottle").value = em.throttleMinutes || 15;
+      if (cfg.server.device_id) $("stDevice").textContent = cfg.server.device_id;
+    }
+
+    $("cfgForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const cfg = {
+        tally: {
+          host: $("c_tallyHost").value.trim(),
+          timeoutMs: Number($("c_tallyTimeout").value) || 30000,
+        },
+        server: {
+          api: $("c_api").value.trim(),
+          token: $("c_token").value.trim(),
+          device_id: $("c_device").value.trim(),
+          company_id: Number($("c_company").value),
+        },
+        syncInterval: $("c_interval").value.trim(),
+        alerts: {
+          email: {
+            enabled: $("c_mailEnabled").value === "true",
+            smtpHost: $("c_smtpHost").value.trim(),
+            smtpPort: Number($("c_smtpPort").value) || 465,
+            user: $("c_mailUser").value.trim(),
+            appPassword: $("c_mailPass").value,
+            to: $("c_mailTo").value.trim(),
+            throttleMinutes: Number($("c_mailThrottle").value) || 15,
+          },
+        },
+      };
+      try {
+        await window.agent.saveConfig(cfg);
+        $("saveMsg").textContent = "Saved — agent restarted.";
+        setTimeout(() => ($("saveMsg").textContent = ""), 4000);
+        refreshStatus();
+      } catch (err) {
+        alert("Save failed: " + (err.message || err));
+      }
+    });
+
+    // --- init ---
+    (async () => {
+      allLogs = await window.agent.getRecentLogs();
+      rerenderLogs();
+      await loadSettings();
+      await refreshStatus();
+    })();
+  </script>
+</body>
+</html>

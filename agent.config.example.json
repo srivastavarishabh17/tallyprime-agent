@@ -1,0 +1,24 @@
+{
+  "tally": {
+    "host": "http://localhost:9000",
+    "timeoutMs": 30000
+  },
+  "server": {
+    "api": "https://inventory.satyakiran.co.in/api/tally/integration",
+    "token": "REPLACE_WITH_AGENT_TOKEN",
+    "device_id": "PC001",
+    "company_id": 1
+  },
+  "syncInterval": "*/2 * * * *",
+  "alerts": {
+    "email": {
+      "enabled": false,
+      "smtpHost": "smtp.gmail.com",
+      "smtpPort": 465,
+      "user": "youraccount@gmail.com",
+      "appPassword": "REPLACE_WITH_GMAIL_APP_PASSWORD",
+      "to": "dev.blazync@gmail.com",
+      "throttleMinutes": 15
+    }
+  }
+}

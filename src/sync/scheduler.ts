@@ -1,9 +1,10 @@
-import cron from "node-cron";
+import cron, { ScheduledTask } from "node-cron";
 import { loadConfig } from "../config";
 import { tallyDate } from "../tally/requests";
 import { syncAll } from "./pull";
 import { pushInvoices } from "./push";
 import { getLastSyncTime, setLastSyncTime } from "../storage/state";
+import { syncStatus } from "./status";
 
 function fmtErr(err: unknown): string {
   if (!(err instanceof Error)) return String(err);
@@ -35,7 +36,14 @@ function syncDateRange(): { from: string; to: string } {
   };
 }
 
-export function startScheduler() {
+export interface SchedulerHandle {
+  task: ScheduledTask;
+  /** Trigger a sync cycle immediately (no-op if one is already running). */
+  runNow: () => Promise<void>;
+  stop: () => void;
+}
+
+export function startScheduler(): SchedulerHandle {
   const config = loadConfig();
   let running = false;
 
@@ -51,6 +59,8 @@ export function startScheduler() {
 
     running = true;
     const started = new Date();
+    syncStatus.running = true;
+    syncStatus.lastStart = started.toISOString();
     console.log(`\n[${started.toISOString()}] Starting sync cycle`);
 
     try {
@@ -64,14 +74,25 @@ export function startScheduler() {
       }
 
       setLastSyncTime(started);
+      syncStatus.lastSuccess = new Date().toISOString();
+      syncStatus.cyclesCompleted += 1;
       console.log(`Sync cycle complete.`);
     } catch (err) {
+      syncStatus.lastError = fmtErr(err);
+      syncStatus.lastErrorAt = new Date().toISOString();
       console.error("Sync cycle failed:", fmtErr(err));
     } finally {
       running = false;
+      syncStatus.running = false;
     }
   };
 
   void sync();
-  return cron.schedule(config.syncInterval, sync);
+  const task = cron.schedule(config.syncInterval, sync);
+
+  return {
+    task,
+    runNow: sync,
+    stop: () => task.stop(),
+  };
 }

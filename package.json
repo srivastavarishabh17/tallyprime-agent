@@ -1,30 +1,66 @@
 {
   "name": "satyakiran-agent",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
-  "main": "dist/index.js",
-  "bin": "dist/index.js",
+  "description": "TallyPrime sync agent with dashboard, remote logging, email alerts and auto-update",
+  "author": "Blazync <business@blazync.com>",
+  "main": "dist/electron/main.js",
   "scripts": {
     "build": "npm run clean && tsc -p tsconfig.json",
     "clean": "node -e \"require('node:fs').rmSync('dist', { recursive: true, force: true })\"",
     "dev": "tsx watch src/index.ts",
-    "package:win": "npm run build && npx @yao-pkg/pkg . --targets node20-win-x64 --output AozoAgent.exe",
-    "start": "node dist/index.js",
+    "dev:electron": "npm run build && electron .",
+    "start": "electron .",
+    "start:headless": "node dist/src/index.js",
+    "package:win": "npm run build && electron-builder --win --x64 --publish never",
+    "release:win": "npm run build && electron-builder --win --x64 --publish always",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
-  "pkg": {
-    "scripts": [
-      "dist/**/*.js"
+  "build": {
+    "appId": "com.satyakiran.agent",
+    "productName": "Satyakiran Agent",
+    "files": [
+      "dist/**/*",
+      "renderer/**/*",
+      "package.json"
     ],
-    "outputPath": "release"
+    "extraResources": [
+      {
+        "from": "agent.config.example.json",
+        "to": "agent.config.example.json"
+      }
+    ],
+    "directories": {
+      "output": "release"
+    },
+    "win": {
+      "target": "nsis"
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "runAfterFinish": true
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "srivastavarishabh17",
+        "repo": "tallyprime-agent"
+      }
+    ]
   },
   "dependencies": {
+    "axios": "^1.8.0",
+    "electron-updater": "^6.6.2",
     "fast-xml-parser": "^5.2.5",
     "node-cron": "^4.2.1",
-    "axios": "^1.8.0"
+    "nodemailer": "^7.0.0"
   },
   "devDependencies": {
     "@types/node": "^24.0.3",
+    "@types/nodemailer": "^6.4.17",
+    "electron": "^37.0.0",
+    "electron-builder": "^26.0.12",
     "tsx": "^4.20.3",
     "typescript": "^5.8.3"
   },

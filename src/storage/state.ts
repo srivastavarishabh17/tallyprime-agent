@@ -1,12 +1,12 @@
 import * as fs from "fs";
-import * as path from "path";
+import { statePath } from "../paths";
 
 interface AgentState {
   lastSyncTime: string | null;
   moduleSyncTime: Record<string, string>;
 }
 
-const STATE_FILE = path.join(process.cwd(), "agent.state.json");
+const STATE_FILE = statePath();
 
 function read(): AgentState {
   try {
