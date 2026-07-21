@@ -1,6 +1,6 @@
 node_modules/
 dist/
-*.exe
+release/*.exe
 release/
 agent.state.json
 agent.config.json
